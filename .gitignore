@@ -1,0 +1,8 @@
+/.gradle/
+/build/
+*.iml
+*.ipr
+/.classpath
+/.factorypath
+/.apt_generated/
+/src/main/generated/

@@ -1,0 +1,43 @@
+plugins {
+    id 'net.kyori.indra' version '2.0.5'
+    id 'application'
+}
+
+group = "ca.stellardrift"
+version = "0.1"
+
+repositories {
+    mavenCentral()
+    maven {
+        url = 'https://repo.spongepowered.org/repository/maven-releases'
+        name = 'sponge'
+        mavenContent {
+            releasesOnly()
+        }
+    }
+    gradlePluginPortal()
+}
+
+dependencies {
+    implementation('org.spongepowered:vanillagradle:0.2') {
+        exclude group: 'org.cadixdev'
+        exclude group: 'org.apache.httpcomponents.client5'
+        exclude group: 'org.ow2.asm'
+    }
+    implementation "org.tinylog:tinylog-api:2.3.2"
+    runtimeOnly "org.tinylog:tinylog-impl:2.3.2"
+    compileOnlyApi 'org.immutables:value-annotations:2.8.8'
+    compileOnlyApi 'org.immutables:gson:2.8.8'
+    annotationProcessor 'org.immutables:value:2.8.8'
+}
+
+indra {
+    github('zml2008', 'mc-version-announcer')
+    javaVersions {
+        target(11)
+    }
+}
+
+application {
+    mainClass = 'ca.stellardrift.mcannouncer.VersionAnnouncer'
+}

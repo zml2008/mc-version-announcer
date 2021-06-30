@@ -1,0 +1,15 @@
+[Unit]
+Description=Minecraft Version Announcer
+Wants=network.target
+
+[Service]
+Type=exec
+User=mcannounce
+Group=mcannounce
+ExecStart=/opt/version-announcer/bin/version-announcer /opt/version-announcer/config.json
+Restart=always
+ProtectSystem=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
