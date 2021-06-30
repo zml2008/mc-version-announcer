@@ -1,13 +1,11 @@
 package ca.stellardrift.mcannouncer;
 
 import ca.stellardrift.mcannouncer.util.GsonUtils;
-import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;

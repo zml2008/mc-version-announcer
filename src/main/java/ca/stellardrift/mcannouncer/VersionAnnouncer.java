@@ -255,6 +255,7 @@ public class VersionAnnouncer implements AutoCloseable {
             .title("Minecraft " + report.versionId())
             .color(report.colour())
             .description(description.toString())
+            .url("https://quiltmc.org/mc-patchnotes/#" + report.versionId())
             .footer(Embed.Footer.of("Last updated"));
 
         if (report.iconUrl() != null) {
