@@ -35,16 +35,21 @@ public interface ComparisonReport {
     Set<Pair<String, URL>> links(); // unused, name -> URL once message components implemented
     @Nullable Instant time();
 
+    @Value.Default
+    default boolean onlyWhenSectionsPresent() {
+        return false;
+    }
+
     final class Builder extends ComparisonReportImpl.Builder {
 
         Builder newVersion(final String previous) {
             return this.colour(COLOUR_ADDED)
-                .description("This is a new version. Changes from " + previous + ":");
+                .description("This is a new version. Changes listed from " + previous + ".");
         }
 
         Builder removedVersion() {
             return this.colour(COLOUR_REMOVED)
-                .description("Version has been removed from the manifest");
+                .description("Version has been removed from the manifest :(");
         }
 
         Builder modifiedVersion() {

@@ -131,7 +131,8 @@ public class VersionAnnouncer implements AutoCloseable {
             if (error != null) this.sendError(error);
             return res;
         });
-        final var next = ManifestState.create(this.http, this.config.cacheDir()).handle((res, error) -> {
+        final var nextFuture = ManifestState.create(this.http, this.config.cacheDir());
+        final var next = nextFuture.handle((res, error) -> {
             if (error != null) this.sendError(error);
             return res;
         });
@@ -176,6 +177,7 @@ public class VersionAnnouncer implements AutoCloseable {
                 }
                 return null;
             }, this.scheduler);
+        this.last = nextFuture;
     }
 
     private void sendError(final Throwable thr) {
@@ -190,10 +192,18 @@ public class VersionAnnouncer implements AutoCloseable {
 
         final Webhook.Builder builder = Webhook.builder();
         builder.allowedMentions(AllowedMention.none());
-
+        boolean embedAdded = false;
         for (final ComparisonReport report : reports) {
-            builder.addEmbed(this.asEmbed(report));
+            if (!report.onlyWhenSectionsPresent() || !report.sections().isEmpty()) {
+                builder.addEmbed(this.asEmbed(report));
+                embedAdded = true;
+            }
         }
+
+        if (!embedAdded) {
+            return;
+        }
+
 
         /* todo: buttons don't seem to work
         // populate buttons (as part of message components)

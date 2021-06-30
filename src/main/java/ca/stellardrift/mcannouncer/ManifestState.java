@@ -197,7 +197,9 @@ public class ManifestState {
 
             final var builder = ComparisonReport.builder()
                 .versionId(changedId)
-                .modifiedVersion();
+                .modifiedVersion()
+                .onlyWhenSectionsPresent(true);
+
             reports.add(this.version(changedId).thenCombine(that.version(changedId), (original, changed) -> {
                 this.populateComparison(original.get(), changed.get(), builder, true);
                 return builder.build();
