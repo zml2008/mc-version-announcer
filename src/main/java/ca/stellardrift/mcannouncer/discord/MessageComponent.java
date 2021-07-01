@@ -27,6 +27,10 @@ public interface MessageComponent {
         return new Button.Builder();
     }
 
+    static SelectMenu.Builder selectBuilder() {
+        return new SelectMenu.Builder();
+    }
+
     @Value.Immutable
     interface ActionRow extends MessageComponent {
         int MAX_CHILDREN = 5;
@@ -78,6 +82,58 @@ public interface MessageComponent {
 
         final class Builder extends MessageComponentImpl.ButtonImpl.Builder {
 
+        }
+
+    }
+
+    @Value.Immutable
+    interface SelectMenu extends MessageComponent {
+
+        @Override
+        @Value.Derived
+        default int type() {
+            return 3;
+        }
+
+        @SerializedName("custom_id")
+        String customId(); // max 100 chars
+        List<Option> options(); // max 25
+        @Nullable String placeholder(); // max 100 chars
+        @Value.Default
+        default int minValues() { // min 0, max 25
+            return 1;
+        }
+
+        @Value.Default
+        default int maxValues() { // min 1, max 25
+            return 1;
+        }
+
+        @Value.Immutable
+        interface Option {
+
+            static Builder builder() {
+                return new Builder();
+            }
+
+            String label(); // max 25 chars
+            String value(); // max 100 chars
+            @Nullable String description(); // max 50 chars
+            // todo emoji
+            @Value.Default
+            @SerializedName("default")
+            default boolean isDefault() {
+               return false;
+            }
+
+            final class Builder extends MessageComponentImpl.OptionImpl.Builder {
+                // auto-generated
+            }
+
+        }
+
+        final class Builder extends MessageComponentImpl.SelectMenuImpl.Builder {
+            // auto-generate
         }
 
     }
