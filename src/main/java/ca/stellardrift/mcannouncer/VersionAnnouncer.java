@@ -134,12 +134,20 @@ public class VersionAnnouncer implements AutoCloseable {
         });
         final var nextFuture = ManifestState.create(this.http, this.config.cacheDir(), false);
         final var next = nextFuture.handle((res, error) -> {
-            if (error != null) this.sendError(error);
+            if (error != null) {
+                this.sendError(error);
+            } else {
+                this.last = nextFuture; // update on success
+            }
             return res;
         });
 
-        last.thenCombine(next, ManifestState::compare)
-            .handleAsync((result, error) -> {
+        last.thenCombine(next, (lastManifest, nextManifest) -> {
+            if (lastManifest == null || nextManifest == null) {
+                return null; // error captured earlier
+            }
+            return lastManifest.compare(nextManifest);
+        }).handleAsync((result, error) -> {
                 if (error != null) {
                     this.sendError(error);
                 } else if (result != null) {
@@ -178,7 +186,6 @@ public class VersionAnnouncer implements AutoCloseable {
                 }
                 return null;
             }, this.scheduler);
-        this.last = nextFuture;
     }
 
     private void sendError(final Throwable thr) {
