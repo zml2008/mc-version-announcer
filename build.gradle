@@ -23,6 +23,7 @@ dependencies {
         exclude group: 'org.cadixdev'
         exclude group: 'org.apache.httpcomponents.client5'
         exclude group: 'org.ow2.asm'
+        exclude module: 'gradle-idea-ext'
     }
     implementation "org.tinylog:tinylog-api:2.3.2"
     runtimeOnly "org.tinylog:tinylog-impl:2.3.2"

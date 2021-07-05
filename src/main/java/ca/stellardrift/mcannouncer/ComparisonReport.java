@@ -57,6 +57,11 @@ public interface ComparisonReport {
                 .description("Version has been modified. Changes from previous instance:");
         }
 
+        void putSectionIfNotEmpty(final String title, final List<String> values) {
+            if (!values.isEmpty()) {
+                this.putSection(title, values);
+            }
+        }
     }
 
 }

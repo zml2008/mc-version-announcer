@@ -2,13 +2,11 @@ package ca.stellardrift.mcannouncer;
 
 import com.google.gson.JsonSyntaxException;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.model.Download;
 import org.spongepowered.gradle.vanilla.internal.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.JavaRuntimeVersion;
 import org.spongepowered.gradle.vanilla.internal.model.Library;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.internal.model.VersionManifestV2;
 import org.spongepowered.gradle.vanilla.internal.util.FileUtils;
 import org.spongepowered.gradle.vanilla.internal.util.GsonUtils;
 import org.spongepowered.gradle.vanilla.internal.util.Pair;
@@ -46,17 +44,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ManifestState {
     private static final String UNKNOWN = "*(unknown)*";
     private static final String NONE = "*(none)*";
-    private static final String MANIFEST_ENDPOINT = Constants.Manifests.API_V2_ENDPOINT;
 
-    private final VersionManifestV2 manifest;
+    private final VersionManifestV1 manifest;
     private final String manifestEtag;
     private final Path cacheLocation;
     private final Map<String, VersionDescriptor.Reference> references = new TreeMap<>();
     private final Map<String, CompletableFuture<ResolutionResult<VersionDescriptor.Full>>> loadedDescriptors = new ConcurrentHashMap<>();
     private final HttpClient client;
 
-    public static CompletableFuture<ManifestState> create(final HttpClient client, final Path cacheLocation) {
-        final URI requestUri = URI.create(MANIFEST_ENDPOINT + "?t=" + System.currentTimeMillis());
+    public static CompletableFuture<ManifestState> create(final HttpClient client, final Path cacheLocation, final boolean trustExisting) {
+        final URI requestUri = URI.create(VersionManifestV1.MANIFEST_ENDPOINT + "?t=" + System.currentTimeMillis());
         final Path destination = cacheLocation.resolve("manifest.json");
         final Path etagFile = cacheLocation.resolve("manifest.etag");
 
@@ -71,6 +68,16 @@ public class ManifestState {
             } catch (final IOException ex) {
                 return CompletableFuture.failedFuture(ex);
             }
+
+            if (Files.exists(destination) && trustExisting) {
+                // load and return stored
+                try (final var reader = Files.newBufferedReader(destination, StandardCharsets.UTF_8)) {
+                    return CompletableFuture.completedFuture(new ManifestState(GsonUtils.GSON.fromJson(reader, VersionManifestV1.class), etag, client, cacheLocation));
+                } catch (final IOException | JsonSyntaxException ex) {
+                    Logger.error(ex, "Failed to load existing version manifest from disk, re-downloading");
+                }
+            }
+
             builder.header("If-None-Match", etag.trim());
         }
 
@@ -109,14 +116,14 @@ public class ManifestState {
             }
 
             try (final var reader = Files.newBufferedReader(destination, StandardCharsets.UTF_8)) {
-                return new ManifestState(GsonUtils.GSON.fromJson(reader, VersionManifestV2.class), etag.orElse(null), client, cacheLocation);
+                return new ManifestState(GsonUtils.GSON.fromJson(reader, VersionManifestV1.class), etag.orElse(null), client, cacheLocation);
             } catch (final IOException | JsonSyntaxException ex) {
                 throw new CompletionException(ex);
             }
         });
     }
 
-    private ManifestState(final VersionManifestV2 manifest, final String manifestEtag, final HttpClient client, final Path cacheLocation) {
+    private ManifestState(final VersionManifestV1 manifest, final String manifestEtag, final HttpClient client, final Path cacheLocation) {
         this.manifest = manifest;
         this.manifestEtag = manifestEtag;
         this.client = client;
@@ -162,6 +169,7 @@ public class ManifestState {
             reports.add(CompletableFuture.completedFuture(ComparisonReport.builder()
                 .versionId(entry.getKey())
                 .removedVersion()
+                .time(entry.getValue().time().toInstant())
                 .build()));
         }
 
@@ -173,6 +181,7 @@ public class ManifestState {
             for (final var entry : theirVersions.entrySet()) {
                 final var builder = ComparisonReport.builder()
                     .versionId(entry.getKey())
+                    .time(entry.getValue().time().toInstant())
                     .newVersion(ourLatest.id());
                 reports.add(ourLatestFull.thenCombine(that.version(entry.getKey()), (oldLatest, added) -> {
                    this.populateComparison(oldLatest.get(), added.get(), builder, false);
@@ -198,6 +207,7 @@ public class ManifestState {
             final var builder = ComparisonReport.builder()
                 .versionId(changedId)
                 .modifiedVersion()
+                .time(theirs.time().toInstant())
                 .onlyWhenSectionsPresent(true);
 
             reports.add(this.version(changedId).thenCombine(that.version(changedId), (original, changed) -> {
@@ -221,6 +231,7 @@ public class ManifestState {
             return CompletableFuture.completedFuture(ComparisonReport.builder()
                 .versionId(newId)
                 .modifiedVersion()
+                .time(theirs.time().toInstant())
                 .description("No changes since " + oldId)
                 .build());
         }
@@ -228,6 +239,7 @@ public class ManifestState {
         final var builder = ComparisonReport.builder()
             .versionId(newId)
             .modifiedVersion()
+            .time(theirs.time().toInstant())
             .description("Changes since " + oldId);
 
         return this.version(oldId).thenCombine(this.version(newId), (original, changed) -> {
@@ -242,13 +254,9 @@ public class ManifestState {
         final ComparisonReport.Builder diff,
         final boolean isModifiedVersion
     ) {
-        diff.time(modified.time().toInstant());
         // downloads
         if (!Objects.equals(original.downloads(), modified.downloads())) {
-            final List<String> downloadDiff = this.populateDownloads(original.downloads(), modified.downloads(), isModifiedVersion);
-            if (!downloadDiff.isEmpty()) {
-                diff.putSection("Downloads", downloadDiff);
-            }
+            diff.putSectionIfNotEmpty("Downloads", this.populateDownloads(original.downloads(), modified.downloads(), isModifiedVersion));
         }
         // asset index
         if (!Objects.equals(original.assets(), modified.assets())) {
@@ -256,11 +264,11 @@ public class ManifestState {
         }
         // libraries
         if (!Objects.equals(original.libraries(), modified.libraries())) {
-            diff.putSection("Libraries", this.populateLibraries(original.libraries(), modified.libraries()));
+            diff.putSectionIfNotEmpty("Libraries", this.populateLibraries(original.libraries(), modified.libraries()));
         }
         // java version
         if (!Objects.equals(original.javaVersion(), modified.javaVersion())) {
-            diff.putSection("Java Version", this.populateJavaVersion(original.javaVersion(), modified.javaVersion()));
+            diff.putSectionIfNotEmpty("Java Version", this.populateJavaVersion(original.javaVersion(), modified.javaVersion()));
         }
 
         // links to downloads
@@ -277,11 +285,11 @@ public class ManifestState {
         final String modifiedComponent = modified == null ? UNKNOWN : modified.component();
 
         if (!currentMajorVersion.equals(modifiedMajorVersion)) {
-            changes.add("**Major Version:** "+ currentMajorVersion + " -> " + modifiedMajorVersion);
+            changes.add("__Major Version__: "+ currentMajorVersion + " -> " + modifiedMajorVersion);
         }
 
         if (!currentComponent.equals(modifiedComponent)) {
-            changes.add("**Component:** " + currentComponent + " -> " + modifiedComponent);
+            changes.add("__Component__: " + currentComponent + " -> " + modifiedComponent);
         }
 
         return changes;

@@ -166,18 +166,11 @@ public interface Embed {
         }
     }
 
-    @Value.Check
-    default void validate() {
-        if (this.title().length() > MAX_TITLE) {
-            throw new IllegalArgumentException("Title must be no longer than " + MAX_TITLE + " characters long (got " + this.title().length() + ')');
-        }
-        if (this.description() != null && this.description().length() > MAX_DESCRIPTION) {
-            throw new IllegalArgumentException("Description must be no longer than " + MAX_DESCRIPTION + " characters long (got " + this.description().length() + ')');
-        }
-        if (this.fields().size() > MAX_FIELDS) {
-            throw new IllegalArgumentException("An embed can have no more than " + MAX_FIELDS + " fields (got " + this.fields().size() + ')');
-        }
-
+    /**
+     * Get the total length of content, for calculating Discord rate limits.
+     */
+    @Value.Derived
+    default int totalContentLength() {
         // max total length
         int totalLength = 0;
         totalLength += this.title().length();
@@ -194,7 +187,22 @@ public interface Embed {
             totalLength += field.name().length();
             totalLength += field.value().length();
         }
+        return totalLength;
+    }
 
+    @Value.Check
+    default void validate() {
+        if (this.title().length() > MAX_TITLE) {
+            throw new IllegalArgumentException("Title must be no longer than " + MAX_TITLE + " characters long (got " + this.title().length() + ')');
+        }
+        if (this.description() != null && this.description().length() > MAX_DESCRIPTION) {
+            throw new IllegalArgumentException("Description must be no longer than " + MAX_DESCRIPTION + " characters long (got " + this.description().length() + ')');
+        }
+        if (this.fields().size() > MAX_FIELDS) {
+            throw new IllegalArgumentException("An embed can have no more than " + MAX_FIELDS + " fields (got " + this.fields().size() + ')');
+        }
+
+        final int totalLength = this.totalContentLength();
         if (totalLength > MAX_LENGTH) {
             throw new IllegalArgumentException("The combined text content of this embed (title, description, footer, author, field name + content) must be no longer than " + MAX_LENGTH + " characters, but was " + totalLength);
         }

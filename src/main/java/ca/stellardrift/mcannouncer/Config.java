@@ -1,7 +1,10 @@
 package ca.stellardrift.mcannouncer;
 
+import ca.stellardrift.mcannouncer.discord.ApiEndpoint;
 import ca.stellardrift.mcannouncer.util.GsonUtils;
 import com.google.gson.JsonSyntaxException;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
@@ -21,15 +24,25 @@ public class Config {
         if (config.cacheDir == null) {
             throw new JsonSyntaxException("No value provided for 'cacheDir'!");
         }
+        for (final Map.Entry<String, Webhook> entry : config.endpoints.entrySet()) {
+            entry.getValue().key = entry.getKey();
+        }
         return config;
     }
 
-    static class Webhook {
+    static class Webhook implements ApiEndpoint {
+        private transient @MonotonicNonNull String key;
         private URI webhookUrl;
         private List<String> roleMentions = List.of();
         private Set<String> tags = Set.of();
 
-        public URI webhookUrl() { // the webhook URL, from discord API
+        @Override
+        public @NonNull String description() {
+            return this.key;
+        }
+
+        @Override
+        public @NonNull URI url() { // the webhook URL, from discord API
             return this.webhookUrl;
         }
 

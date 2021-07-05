@@ -2,6 +2,7 @@ package ca.stellardrift.mcannouncer;
 
 import ca.stellardrift.mcannouncer.discord.AllowedMention;
 import ca.stellardrift.mcannouncer.discord.Embed;
+import ca.stellardrift.mcannouncer.discord.RateLimitAwareQueue;
 import ca.stellardrift.mcannouncer.discord.Webhook;
 import ca.stellardrift.mcannouncer.util.GsonUtils;
 import com.google.gson.JsonParseException;
@@ -16,8 +17,6 @@ import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -65,6 +64,7 @@ public class VersionAnnouncer implements AutoCloseable {
     private final Config config;
     private volatile ScheduledExecutorService scheduler;
     private HttpClient http;
+    private RateLimitAwareQueue discordSender;
 
     private CompletableFuture<ManifestState> last;
 
@@ -74,14 +74,15 @@ public class VersionAnnouncer implements AutoCloseable {
             .executor(this.scheduler)
             .build();
 
-        this.last = ManifestState.create(this.http, this.config.cacheDir()); // initialize state
+        this.last = ManifestState.create(this.http, this.config.cacheDir(), true); // initialize state
+        this.discordSender = new RateLimitAwareQueue(this.http, this.scheduler);
 
         // Shut down gracefully on ctrl + c
-        sun.misc.Signal.handle(new Signal("TERM"), sig -> {
+        Signal.handle(new Signal("TERM"), sig -> {
             Logger.info("Received SIGTERM, shutting down");
             this.close();
         });
-        sun.misc.Signal.handle(new Signal("INT"), sig -> {
+        Signal.handle(new Signal("INT"), sig -> {
             Logger.info("Received SIGINT, shutting down");
             this.close();
         });
@@ -131,7 +132,7 @@ public class VersionAnnouncer implements AutoCloseable {
             if (error != null) this.sendError(error);
             return res;
         });
-        final var nextFuture = ManifestState.create(this.http, this.config.cacheDir());
+        final var nextFuture = ManifestState.create(this.http, this.config.cacheDir(), false);
         final var next = nextFuture.handle((res, error) -> {
             if (error != null) this.sendError(error);
             return res;
@@ -190,17 +191,24 @@ public class VersionAnnouncer implements AutoCloseable {
             throw new IllegalArgumentException("Received a list of length >10");
         }
 
-        final Webhook.Builder builder = Webhook.builder();
-        builder.allowedMentions(AllowedMention.none());
-        boolean embedAdded = false;
+        Webhook.Builder builder = Webhook.builder()
+            .allowedMentions(AllowedMention.none());
+        int totalLength = 0;
         for (final ComparisonReport report : reports) {
             if (!report.onlyWhenSectionsPresent() || !report.sections().isEmpty()) {
+                final Embed embed = this.asEmbed(report);
+                if (totalLength + embed.totalContentLength() > Embed.MAX_LENGTH) {
+                    this.sendWebhook(builder.build());
+                    builder = Webhook.builder()
+                        .allowedMentions(AllowedMention.none());
+                    totalLength = 0;
+                }
                 builder.addEmbed(this.asEmbed(report));
-                embedAdded = true;
+                totalLength += embed.totalContentLength();
             }
         }
 
-        if (!embedAdded) {
+        if (totalLength == 0) {
             return;
         }
 
@@ -280,6 +288,7 @@ public class VersionAnnouncer implements AutoCloseable {
             int count = 0;
             final StringBuilder value = new StringBuilder();
             int chars = 0;
+            boolean added = false;
             for (final var it = entry.getValue().iterator(); it.hasNext();) {
                 final String line = it.next();
                 chars += line.length() + 1;
@@ -289,6 +298,7 @@ public class VersionAnnouncer implements AutoCloseable {
                         value.toString(),
                         false
                     );
+                    added = true;
                     count++;
                     chars = 0;
                     // flush the buffer
@@ -306,6 +316,10 @@ public class VersionAnnouncer implements AutoCloseable {
                     value.toString(),
                     false
                 );
+                added = true;
+            }
+            if (!added) {
+                Logger.warn("Field '{}' in embed for version '{}' has empty value", entry.getKey(), report.versionId());
             }
         }
 
@@ -325,21 +339,7 @@ public class VersionAnnouncer implements AutoCloseable {
             if (!endpoint.getValue().isTagged(tag)) {
                 continue;
             }
-
-            responses.add(this.http.sendAsync(
-                requestBuilder(endpoint.getValue().webhookUrl())
-                    .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
-                    .header("Content-Type", "application/json")
-                    .build(),
-                HttpResponse.BodyHandlers.ofString() // json text?
-            ).handle((response, error) -> {
-                if (error != null) {
-                    Logger.error(error, "Failed to send webhook payload to endpoint {}", endpoint.getKey());
-                } else if (response != null && response.statusCode() >= 400) { // error
-                    Logger.error("Received an error from discord while sending to {}, status {}: {}", endpoint.getKey(), response.statusCode(), response.body());
-                }
-                return response;
-            }));
+            responses.add(this.discordSender.sendJson(endpoint.getValue(), payload));
         }
         return CompletableFuture.allOf(responses.toArray(new CompletableFuture<?>[0]));
     }
@@ -365,13 +365,13 @@ public class VersionAnnouncer implements AutoCloseable {
         }
     }
 
-    static HttpRequest get(final URI url) {
+    public static HttpRequest get(final URI url) {
         return requestBuilder(url)
             .GET()
             .build();
     }
 
-    static HttpRequest.Builder requestBuilder(final URI uri) {
+    public static HttpRequest.Builder requestBuilder(final URI uri) {
         return HttpRequest.newBuilder()
             .setHeader("User-Agent", "mc-version-announcer")
             .uri(uri);
