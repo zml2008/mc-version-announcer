@@ -87,14 +87,13 @@ public class ManifestState {
             return CompletableFuture.failedFuture(ex);
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
         final CompletableFuture<? extends HttpResponse<?>> manifest = client.sendAsync(
             VersionAnnouncer.get(requestUri),
             info -> {
                 if (info.statusCode() == 304) {
-                    return (HttpResponse.BodySubscriber) HttpResponse.BodySubscribers.discarding();
+                    return HttpResponse.BodySubscribers.replacing(destination);
                 } else {
-                    return (HttpResponse.BodySubscriber) HttpResponse.BodySubscribers.ofFile(destination,
+                    return HttpResponse.BodySubscribers.ofFile(destination,
                         StandardOpenOption.CREATE,
                         StandardOpenOption.WRITE,
                         StandardOpenOption.TRUNCATE_EXISTING
