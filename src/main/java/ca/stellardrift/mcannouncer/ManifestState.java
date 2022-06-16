@@ -55,7 +55,7 @@ public class ManifestState {
     private final HttpClient client;
 
     public static CompletableFuture<ManifestState> create(final HttpClient client, final Path cacheLocation, final boolean trustExisting) {
-        final URI requestUri = URI.create(MANIFEST_ENDPOINT + "?t=" + System.currentTimeMillis());
+        final URI requestUri = URI.create(MANIFEST_ENDPOINT);
         final Path destination = cacheLocation.resolve("manifest.json");
         final Path etagFile = cacheLocation.resolve("manifest.etag");
 
