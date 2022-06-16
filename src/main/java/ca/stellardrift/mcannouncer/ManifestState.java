@@ -7,6 +7,7 @@ import org.spongepowered.gradle.vanilla.internal.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.JavaRuntimeVersion;
 import org.spongepowered.gradle.vanilla.internal.model.Library;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.model.VersionManifestV2;
 import org.spongepowered.gradle.vanilla.internal.util.FileUtils;
 import org.spongepowered.gradle.vanilla.internal.util.GsonUtils;
 import org.spongepowered.gradle.vanilla.internal.util.Pair;
@@ -42,10 +43,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * Represents a single fetch of the manifest.
  */
 public class ManifestState {
+    private static final String MANIFEST_ENDPOINT = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     private static final String UNKNOWN = "*(unknown)*";
     private static final String NONE = "*(none)*";
 
-    private final VersionManifestV1 manifest;
+    private final VersionManifestV2 manifest;
     private final String manifestEtag;
     private final Path cacheLocation;
     private final Map<String, VersionDescriptor.Reference> references = new TreeMap<>();
@@ -53,7 +55,7 @@ public class ManifestState {
     private final HttpClient client;
 
     public static CompletableFuture<ManifestState> create(final HttpClient client, final Path cacheLocation, final boolean trustExisting) {
-        final URI requestUri = URI.create(VersionManifestV1.MANIFEST_ENDPOINT + "?t=" + System.currentTimeMillis());
+        final URI requestUri = URI.create(MANIFEST_ENDPOINT + "?t=" + System.currentTimeMillis());
         final Path destination = cacheLocation.resolve("manifest.json");
         final Path etagFile = cacheLocation.resolve("manifest.etag");
 
@@ -72,7 +74,7 @@ public class ManifestState {
             if (Files.exists(destination) && trustExisting) {
                 // load and return stored
                 try (final var reader = Files.newBufferedReader(destination, StandardCharsets.UTF_8)) {
-                    return CompletableFuture.completedFuture(new ManifestState(GsonUtils.GSON.fromJson(reader, VersionManifestV1.class), etag, client, cacheLocation));
+                    return CompletableFuture.completedFuture(new ManifestState(GsonUtils.GSON.fromJson(reader, VersionManifestV2.class), etag, client, cacheLocation));
                 } catch (final IOException | JsonSyntaxException ex) {
                     Logger.error(ex, "Failed to load existing version manifest from disk, re-downloading");
                 }
@@ -115,14 +117,14 @@ public class ManifestState {
             }
 
             try (final var reader = Files.newBufferedReader(destination, StandardCharsets.UTF_8)) {
-                return new ManifestState(GsonUtils.GSON.fromJson(reader, VersionManifestV1.class), etag.orElse(null), client, cacheLocation);
+                return new ManifestState(GsonUtils.GSON.fromJson(reader, VersionManifestV2.class), etag.orElse(null), client, cacheLocation);
             } catch (final IOException | JsonSyntaxException ex) {
                 throw new CompletionException(ex);
             }
         });
     }
 
-    private ManifestState(final VersionManifestV1 manifest, final String manifestEtag, final HttpClient client, final Path cacheLocation) {
+    private ManifestState(final VersionManifestV2 manifest, final String manifestEtag, final HttpClient client, final Path cacheLocation) {
         this.manifest = manifest;
         this.manifestEtag = manifestEtag;
         this.client = client;

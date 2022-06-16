@@ -1,6 +1,7 @@
 plugins {
-    id 'net.kyori.indra' version '2.0.6'
+    id 'net.kyori.indra' version '2.1.1'
     id 'application'
+    id 'com.diffplug.eclipse.apt' version '3.36.2'
 }
 
 group = "ca.stellardrift"
@@ -25,6 +26,7 @@ dependencies {
         exclude group: 'org.ow2.asm'
         exclude module: 'gradle-idea-ext'
     }
+    implementation 'com.google.code.gson:gson:2.9.0'
     implementation "org.tinylog:tinylog-api:2.3.2"
     runtimeOnly "org.tinylog:tinylog-impl:2.3.2"
     compileOnlyApi 'org.immutables:value-annotations:2.8.8'

@@ -168,6 +168,8 @@ public interface Embed {
 
     /**
      * Get the total length of content, for calculating Discord rate limits.
+     *
+     * @return the total length
      */
     @Value.Derived
     default int totalContentLength() {
