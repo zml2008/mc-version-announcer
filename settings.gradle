@@ -1,1 +1,27 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+pluginManagement {
+    repositories {
+        maven {
+            url = "https://repo.stellardrift.ca/repository/stable/"
+            name = "stellardriftReleases"
+            mavenContent { releasesOnly() }
+        }
+        maven {
+            url = "https://repo.stellardrift.ca/repository/snapshots/"
+            name = "stellardriftSnapshots"
+            mavenContent { snapshotsOnly() }
+        }
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.4.0'
+}
+
 rootProject.name = "version-announcer"
+
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    pluginManagement.repositories.each(repositories.&add)
+}

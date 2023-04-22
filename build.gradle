@@ -1,23 +1,11 @@
 plugins {
-    id 'net.kyori.indra' version '2.1.1'
+    id 'net.kyori.indra' version '3.0.1'
     id 'application'
-    id 'com.diffplug.eclipse.apt' version '3.36.2'
+    id 'com.diffplug.eclipse.apt' version '3.41.0'
 }
 
 group = "ca.stellardrift"
 version = "0.1"
-
-repositories {
-    mavenCentral()
-    maven {
-        url = 'https://repo.spongepowered.org/repository/maven-releases'
-        name = 'sponge'
-        mavenContent {
-            releasesOnly()
-        }
-    }
-    gradlePluginPortal()
-}
 
 dependencies {
     implementation('org.spongepowered:vanillagradle:0.2') {
@@ -26,12 +14,12 @@ dependencies {
         exclude group: 'org.ow2.asm'
         exclude module: 'gradle-idea-ext'
     }
-    implementation 'com.google.code.gson:gson:2.9.0'
-    implementation "org.tinylog:tinylog-api:2.3.2"
-    runtimeOnly "org.tinylog:tinylog-impl:2.3.2"
-    compileOnlyApi 'org.immutables:value-annotations:2.8.8'
-    compileOnlyApi 'org.immutables:gson:2.8.8'
-    annotationProcessor 'org.immutables:value:2.8.8'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation "org.tinylog:tinylog-api:2.6.1"
+    runtimeOnly "org.tinylog:tinylog-impl:2.6.1"
+    compileOnlyApi 'org.immutables:value-annotations:2.9.3'
+    compileOnlyApi 'org.immutables:gson:2.9.3'
+    annotationProcessor 'org.immutables:value:2.9.3'
 }
 
 indra {
