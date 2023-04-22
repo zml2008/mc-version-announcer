@@ -1,25 +1,25 @@
 plugins {
-    id 'net.kyori.indra' version '3.0.1'
+    alias libs.plugins.indra
     id 'application'
-    id 'com.diffplug.eclipse.apt' version '3.41.0'
+    alias libs.plugins.eclipseApt
 }
 
 group = "ca.stellardrift"
 version = "0.1"
 
 dependencies {
-    implementation('org.spongepowered:vanillagradle:0.2') {
+    implementation(libs.vanillagradle) {
         exclude group: 'org.cadixdev'
         exclude group: 'org.apache.httpcomponents.client5'
         exclude group: 'org.ow2.asm'
         exclude module: 'gradle-idea-ext'
     }
-    implementation 'com.google.code.gson:gson:2.10.1'
-    implementation "org.tinylog:tinylog-api:2.6.1"
-    runtimeOnly "org.tinylog:tinylog-impl:2.6.1"
-    compileOnlyApi 'org.immutables:value-annotations:2.9.3'
-    compileOnlyApi 'org.immutables:gson:2.9.3'
-    annotationProcessor 'org.immutables:value:2.9.3'
+    implementation libs.gson
+    implementation libs.tinylog.api
+    runtimeOnly libs.tinylog.impl
+    compileOnlyApi libs.immutables.annotations
+    compileOnlyApi libs.immutables.gson
+    annotationProcessor libs.immutables.processor
 }
 
 indra {
