@@ -87,6 +87,8 @@ public class VersionAnnouncer implements AutoCloseable {
             this.close();
         });
 
+        Logger.info("Broadcasting to endpoints: {}", this.config.endpoints().keySet());
+
         this.sendWebhook(Webhook.builder()
             .username("version-announcer")
             .addEmbed(Embed.builder()
@@ -280,7 +282,7 @@ public class VersionAnnouncer implements AutoCloseable {
             .title("Minecraft " + report.versionId())
             .color(report.colour())
             .description(description.toString())
-            .url("https://quiltmc.org/mc-patchnotes/#" + report.versionId())
+            .url(String.format(config.changelogUrlFormat(), report.versionId()))
             .footer(Embed.Footer.of("Last updated"));
 
         if (report.iconUrl() != null) {

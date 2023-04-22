@@ -16,6 +16,7 @@ import java.util.Set;
 
 public class Config {
 
+    private String changelogUrlFormat = "https://mdcfe.dev/mc-changes?ver=%s";
     private String cacheDir;
     private Map<String, Webhook> endpoints = Map.of();
 
@@ -53,6 +54,10 @@ public class Config {
         boolean isTagged(final @Nullable String tag) {
             return tag == null || this.tags.contains(tag);
         }
+    }
+
+    public String changelogUrlFormat() {
+        return this.changelogUrlFormat;
     }
 
     public Path cacheDir() {
