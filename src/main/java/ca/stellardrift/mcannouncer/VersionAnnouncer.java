@@ -5,11 +5,11 @@ import ca.stellardrift.mcannouncer.discord.Embed;
 import ca.stellardrift.mcannouncer.discord.RateLimitAwareQueue;
 import ca.stellardrift.mcannouncer.discord.Webhook;
 import ca.stellardrift.mcannouncer.util.GsonUtils;
+import ca.stellardrift.mcannouncer.util.Signals;
 import com.google.gson.JsonParseException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.internal.util.Pair;
 import org.tinylog.Logger;
-import sun.misc.Signal;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -78,11 +78,11 @@ public class VersionAnnouncer implements AutoCloseable {
         this.discordSender = new RateLimitAwareQueue(this.http, this.scheduler);
 
         // Shut down gracefully on ctrl + c
-        Signal.handle(new Signal("TERM"), sig -> {
+        Signals.register("TERM", () -> {
             Logger.info("Received SIGTERM, shutting down");
             this.close();
         });
-        Signal.handle(new Signal("INT"), sig -> {
+        Signals.register("INT", () -> {
             Logger.info("Received SIGINT, shutting down");
             this.close();
         });
