@@ -282,7 +282,7 @@ public class VersionAnnouncer implements AutoCloseable {
             .title("Minecraft " + report.versionId())
             .color(report.colour())
             .description(description.toString())
-            .url(String.format(config.changelogUrlFormat(), report.versionId()))
+            .url(config.changelogUrlFormat().formatted(report.versionId()))
             .footer(Embed.Footer.of("Last updated"));
 
         if (report.iconUrl() != null) {

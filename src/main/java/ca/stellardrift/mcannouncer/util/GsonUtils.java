@@ -18,7 +18,6 @@ import org.spongepowered.gradle.vanilla.internal.model.rule.RuleDeclarationTypeA
 import org.spongepowered.gradle.vanilla.internal.util.GsonSerializers;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -90,25 +89,25 @@ public class GsonUtils {
     }
 
     public static <T> T parseFromJson(final URL url, final Class<T> type) throws IOException {
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(url, "url").openStream(), StandardCharsets.UTF_8))) {
+        try (final var reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(url, "url").openStream(), StandardCharsets.UTF_8))) {
             return GsonUtils.GSON.fromJson(reader, type);
         }
     }
 
     public static <T> T parseFromJson(final Path path, final Class<T> type) throws IOException {
-        try (final BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+        try (final var reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             return GsonUtils.GSON.fromJson(reader, type);
         }
     }
 
     public static <T> T parseFromJson(final File file, final Class<T> type) throws IOException {
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+        try (final var reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             return GsonUtils.GSON.fromJson(reader, type);
         }
     }
 
     public static <T> void writeToJson(final Path path, final T value, final Class<T> type) throws IOException {
-        try (final BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+        try (final var writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
             GsonUtils.GSON.toJson(value, type, writer);
         }
     }

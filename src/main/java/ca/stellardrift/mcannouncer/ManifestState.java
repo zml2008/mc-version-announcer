@@ -141,7 +141,7 @@ public class ManifestState {
      * <p>This is the real core of the logic.</p>
      *
      * @param that newer manifest state
-     * @return a set of versions that have changed.
+     * @return a list of versions that have changed.
      */
     public List<CompletableFuture<ComparisonReport>> compare(final ManifestState that) {
         if (Objects.equals(this.manifestEtag, that.manifestEtag)) {

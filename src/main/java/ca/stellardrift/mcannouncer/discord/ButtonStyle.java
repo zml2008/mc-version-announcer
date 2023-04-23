@@ -49,14 +49,15 @@ public enum ButtonStyle {
     }
 
     static {
-        for (final ButtonStyle style : ButtonStyle.values()) {
+        final ButtonStyle[] values = ButtonStyle.values();
+        for (final ButtonStyle style : values) {
             while (BY_ID.size() < style.id) {
                 BY_ID.add(null);
             }
             BY_ID.add(style.id, style);
         }
 
-        for (final ButtonStyle style : ButtonStyle.values()) {
+        for (final ButtonStyle style : values) {
             if (ButtonStyle.byId(style.id) != style) {
                 throw new IllegalStateException("Mismatch, expected " + style + " but got " + ButtonStyle.byId(style.id));
             }
