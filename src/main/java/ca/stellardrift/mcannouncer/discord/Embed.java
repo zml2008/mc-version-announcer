@@ -5,6 +5,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.immutables.gson.Gson;
 import org.immutables.value.Value;
 
+import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
 import java.util.List;
@@ -72,16 +73,16 @@ public interface Embed {
     @Value.Immutable
     interface Media {
 
-        static Media of(final URL url) {
-            return EmbedImpl.MediaImpl.of(url, OptionalInt.empty(), OptionalInt.empty());
+        static Media of(final URI uri) {
+            return EmbedImpl.MediaImpl.of(uri, OptionalInt.empty(), OptionalInt.empty());
         }
 
-        static Media of(final URL url, final int height, final int width) {
-            return EmbedImpl.MediaImpl.of(url, height, width);
+        static Media of(final URI uri, final int height, final int width) {
+            return EmbedImpl.MediaImpl.of(uri, height, width);
         }
 
         @Value.Parameter
-        URL url();
+        URI uri();
         @Value.Parameter
         OptionalInt height();
         @Value.Parameter

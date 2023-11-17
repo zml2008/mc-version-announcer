@@ -12,8 +12,8 @@ import org.spongepowered.gradle.vanilla.internal.util.Pair;
 import org.tinylog.Logger;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -178,7 +178,7 @@ public class VersionAnnouncer implements AutoCloseable {
 
                             try {
                                 this.sendReport(completedReports);
-                            } catch (final MalformedURLException ex) {
+                            } catch (final URISyntaxException ex) {
                                 Logger.error(ex, "Failed to send report batch from {} to {}", startIdx, maxIdx);
                             }
                             return null;
@@ -195,7 +195,7 @@ public class VersionAnnouncer implements AutoCloseable {
     }
 
     // receives a list of max length 10
-    private void sendReport(final List<ComparisonReport> reports) throws MalformedURLException {
+    private void sendReport(final List<ComparisonReport> reports) throws URISyntaxException {
         if (reports.size() > Webhook.MAX_EMBEDS) {
             throw new IllegalArgumentException("Received a list of length >10");
         }
@@ -261,7 +261,7 @@ public class VersionAnnouncer implements AutoCloseable {
         this.sendWebhook(builder.build());
     }
 
-    private Embed asEmbed(final ComparisonReport report) throws MalformedURLException {
+    private Embed asEmbed(final ComparisonReport report) throws URISyntaxException {
         final Embed.Builder builder = Embed.builder();
 
         final StringBuilder description = new StringBuilder(report.description());
@@ -286,7 +286,7 @@ public class VersionAnnouncer implements AutoCloseable {
             .footer(Embed.Footer.of("Last updated"));
 
         if (report.iconUrl() != null) {
-            builder.thumbnail(new URL(report.iconUrl()), OptionalInt.empty(), OptionalInt.empty());
+            builder.thumbnail(new URI(report.iconUrl()), OptionalInt.empty(), OptionalInt.empty());
         }
 
         if (report.time() != null) {
