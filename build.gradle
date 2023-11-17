@@ -66,3 +66,29 @@ jib {
         workingDirectory = '/data'
     }
 }
+
+def outputImageId = tasks.register("printJibMeta") {
+    description = "Expose image information as an output for GitHub Actions"
+
+    def jibImageJson = project.jib.outputPaths.imageJson
+    def githubOutput = providers.environmentVariable("GITHUB_OUTPUT")
+    inputs.property("jibImageJson", jibImageJson)
+    inputs.property("githubOutput", githubOutput).optional(true)
+
+    doLast {
+        if (!githubOutput.present) {
+            didWork = false
+            return
+        }
+
+        file(githubOutput.get()).withWriterAppend('utf-8', {
+            it.write("imageJson=")
+            file(jibImageJson).withReader 'utf-8', { meta -> meta.transferTo(it) }
+        })
+    }
+}
+
+['jib', 'jibDockerBuild', 'jibBuildTar'].each {
+    tasks.named(it).configure { finalizedBy(outputImageId.name) }
+}
+
