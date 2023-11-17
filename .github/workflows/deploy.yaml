@@ -47,5 +47,5 @@ jobs:
           PROMOTED_TAG_NAME: "stable"
         run: |
           docker image pull "$IMAGE_NAME@$IMAGE_ID"
-          docker tag $IMAGE_ID $IMAGE_NAME:$PROMOTED_TAG_NAME
-          docker push $IMAGE_NAME:$PROMOTED_TAG_NAME
+          docker tag "$IMAGE_NAME@$IMAGE_ID" "$IMAGE_NAME:$PROMOTED_TAG_NAME"
+          docker push "$IMAGE_NAME:$PROMOTED_TAG_NAME"
