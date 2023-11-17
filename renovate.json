@@ -1,0 +1,14 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "local>KyoriPowered/.github:renovate-config",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "pinDigest": {
+    "schedule": [
+      "at any time"
+    ],
+    "automerge": true,
+    "automergeType": "pr"
+  }
+}

@@ -37,7 +37,7 @@ application {
 
 jib {
     from {
-        image = "eclipse-temurin:${javaTarget}-jre-ubi9-minimal"
+        image = "azul/zulu-openjdk-alpine:${javaTarget}-jre"
         platforms {
             // We can only build multi-arch images when pushing to a registry, not when building locally
             def requestedTasks = gradle.startParameter.taskNames
@@ -59,7 +59,7 @@ jib {
             }
         }
     }
-    to.image = "version-announcer"
+    to.image = "ghcr.io/zml2008/version-announcer"
     container {
         mainClass = application.mainClass.get()
         args = ["/data/config.json"]

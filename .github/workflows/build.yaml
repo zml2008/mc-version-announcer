@@ -1,0 +1,27 @@
+name: "build"
+
+on:
+  push:
+    branches-ignore: ["trunk"]
+    tags-ignore: ["**"]
+  pull_request:
+
+concurrency:
+  cancel-in-progress: true
+  group: "${{ github.workflow }}-${{ github.event.number || github.ref }}"
+
+jobs:
+  build:
+    # Only run on PRs if the source branch is on someone else's repo
+    if: "${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}"
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest"]
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - name: "checkout"
+        uses: "actions/checkout@v4"
+      - name: "setup environment"
+        uses: "./.github/actions/setup-env/"
+      - name: "build"
+        run: ./gradlew build
