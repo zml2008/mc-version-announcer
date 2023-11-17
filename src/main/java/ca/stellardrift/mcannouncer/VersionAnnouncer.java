@@ -1,12 +1,17 @@
 package ca.stellardrift.mcannouncer;
 
-import ca.stellardrift.mcannouncer.discord.AllowedMention;
-import ca.stellardrift.mcannouncer.discord.Embed;
-import ca.stellardrift.mcannouncer.discord.RateLimitAwareQueue;
-import ca.stellardrift.mcannouncer.discord.Webhook;
-import ca.stellardrift.mcannouncer.util.GsonUtils;
 import ca.stellardrift.mcannouncer.util.Signals;
+import ca.stellardrift.mcannouncer.util.WebhookUtil;
+import club.minnced.discord.webhook.WebhookClient;
+import club.minnced.discord.webhook.WebhookClientBuilder;
+import club.minnced.discord.webhook.send.AllowedMentions;
+import club.minnced.discord.webhook.send.WebhookEmbed;
+import club.minnced.discord.webhook.send.WebhookEmbedBuilder;
+import club.minnced.discord.webhook.send.WebhookMessage;
+import club.minnced.discord.webhook.send.WebhookMessageBuilder;
 import com.google.gson.JsonParseException;
+import okhttp3.Cache;
+import okhttp3.OkHttpClient;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.internal.util.Pair;
 import org.tinylog.Logger;
@@ -23,7 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -31,7 +36,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.Objects.requireNonNull;
+
 public class VersionAnnouncer implements AutoCloseable {
+    private static final String USER_AGENT = "mc-version-announcer (https://github.com/zml2008/mc-version-announcer)";
 
     public VersionAnnouncer(final Config config) {
         this.config = config;
@@ -64,9 +72,21 @@ public class VersionAnnouncer implements AutoCloseable {
     private final Config config;
     private volatile ScheduledExecutorService scheduler;
     private HttpClient http;
-    private RateLimitAwareQueue discordSender;
+    private List<WebhookEndpoint> discordSender;
 
     private CompletableFuture<ManifestState> last;
+
+    record WebhookEndpoint(String name, @Nullable Set<String> tags, WebhookClient client) {
+        public WebhookEndpoint {
+            requireNonNull(name, "name");
+            tags = tags == null ? Set.of() : Set.copyOf(tags);
+            requireNonNull(client, "client");
+        }
+
+        boolean isTagged(final @Nullable String tag) {
+            return tag == null || this.tags.contains(tag);
+        }
+    }
 
     public void start() {
         this.scheduler = Executors.newScheduledThreadPool(4);
@@ -75,7 +95,27 @@ public class VersionAnnouncer implements AutoCloseable {
             .build();
 
         this.last = ManifestState.create(this.http, this.config.cacheDir(), true); // initialize state
-        this.discordSender = new RateLimitAwareQueue(this.http, this.scheduler);
+        this.discordSender = new ArrayList<>();
+        final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .addNetworkInterceptor(chain ->
+                chain.proceed(
+                    chain.request().newBuilder()
+                        .header("User-Agent", USER_AGENT)
+                        .build()
+                ))
+            .cache(new Cache(this.config.cacheDir().resolve("okhttp-cache").toFile(), 100 * 1024 * 1024 /* 100 mb */))
+            .build();
+
+        for (final var entry : this.config.endpoints().entrySet()) {
+            final WebhookClient client = new WebhookClientBuilder(entry.getValue().url().toString())
+                .setDaemon(true)
+                .setAllowedMentions(AllowedMentions.none())
+                .setExecutorService(this.scheduler)
+                .setHttpClient(httpClient)
+                .build();
+
+            this.discordSender.add(new WebhookEndpoint(entry.getKey(), entry.getValue().tags(), client));
+        }
 
         // Shut down gracefully on ctrl + c
         Signals.register("TERM", () -> {
@@ -89,15 +129,15 @@ public class VersionAnnouncer implements AutoCloseable {
 
         Logger.info("Broadcasting to endpoints: {}", this.config.endpoints().keySet());
 
-        this.sendWebhook(Webhook.builder()
-            .username("version-announcer")
-            .addEmbed(Embed.builder()
-                .title("Successfully started")
-                .color(0x883399)
-                .description("Startup has completed")
-                .footer("meow :3", null)
-                .addField("Java Version", Runtime.version().toString(), false)
-                .author(Embed.Author.builder().name("version-announcer").build())
+        this.sendWebhook(new WebhookMessageBuilder()
+            .setUsername("version-announcer")
+            .addEmbeds(new WebhookEmbedBuilder()
+                .setTitle(new WebhookEmbed.EmbedTitle("Successfully started", null))
+                .setColor(0x883399)
+                .setDescription("Startup has completed")
+                .setFooter(new WebhookEmbed.EmbedFooter("meow :3", null))
+                .addField(new WebhookEmbed.EmbedField(false, "Java Version", Runtime.version().toString()))
+                .setAuthor(new WebhookEmbed.EmbedAuthor("version-announcer", null, null))
                 .build()
             )
             // .content("Successfully started!")
@@ -196,24 +236,24 @@ public class VersionAnnouncer implements AutoCloseable {
 
     // receives a list of max length 10
     private void sendReport(final List<ComparisonReport> reports) throws URISyntaxException {
-        if (reports.size() > Webhook.MAX_EMBEDS) {
+        if (reports.size() > WebhookMessage.MAX_EMBEDS) {
             throw new IllegalArgumentException("Received a list of length >10");
         }
 
-        Webhook.Builder builder = Webhook.builder()
-            .allowedMentions(AllowedMention.none());
+        WebhookMessageBuilder builder = new WebhookMessageBuilder()
+            .setAllowedMentions(AllowedMentions.none());
         int totalLength = 0;
         for (final ComparisonReport report : reports) {
             if (!report.onlyWhenSectionsPresent() || !report.sections().isEmpty()) {
-                final Embed embed = this.asEmbed(report);
-                if (totalLength + embed.totalContentLength() > Embed.MAX_LENGTH) {
+                final WebhookEmbed embed = this.asEmbed(report);
+                if (totalLength + WebhookUtil.totalContentLength(embed) > WebhookUtil.MAX_EMBED_LENGTH) {
                     this.sendWebhook(builder.build());
-                    builder = Webhook.builder()
-                        .allowedMentions(AllowedMention.none());
+                    builder = new WebhookMessageBuilder()
+                        .setAllowedMentions(AllowedMentions.none());
                     totalLength = 0;
                 }
-                builder.addEmbed(this.asEmbed(report));
-                totalLength += embed.totalContentLength();
+                builder.addEmbeds(this.asEmbed(report));
+                totalLength += WebhookUtil.totalContentLength(embed);
             }
         }
 
@@ -261,12 +301,12 @@ public class VersionAnnouncer implements AutoCloseable {
         this.sendWebhook(builder.build());
     }
 
-    private Embed asEmbed(final ComparisonReport report) throws URISyntaxException {
-        final Embed.Builder builder = Embed.builder();
+    private WebhookEmbed asEmbed(final ComparisonReport report) {
+        final WebhookEmbedBuilder builder = new WebhookEmbedBuilder();
 
         final StringBuilder description = new StringBuilder(report.description());
 
-        if (description.length() > 0 && !report.links().isEmpty()) {
+        if (!description.isEmpty() && !report.links().isEmpty()) {
             description.append("\n\n**Links:**\n");
             boolean first = true;
             for (final Pair<String, URL> link : report.links()) {
@@ -279,18 +319,17 @@ public class VersionAnnouncer implements AutoCloseable {
         }
 
         builder
-            .title("Minecraft " + report.versionId())
-            .color(report.colour())
-            .description(description.toString())
-            .url(config.changelogUrlFormat().formatted(report.versionId()))
-            .footer(Embed.Footer.of("Last updated"));
+            .setTitle(new WebhookEmbed.EmbedTitle("Minecraft " + report.versionId(), config.changelogUrlFormat().formatted(report.versionId())))
+            .setColor(report.colour())
+            .setDescription(description.toString())
+            .setFooter(new WebhookEmbed.EmbedFooter("Last updated", null));
 
         if (report.iconUrl() != null) {
-            builder.thumbnail(new URI(report.iconUrl()), OptionalInt.empty(), OptionalInt.empty());
+            builder.setThumbnailUrl(report.iconUrl());
         }
 
         if (report.time() != null) {
-            builder.timestamp(report.time());
+            builder.setTimestamp(report.time());
         }
 
         for (final var entry : report.sections().entrySet()) {
@@ -301,11 +340,13 @@ public class VersionAnnouncer implements AutoCloseable {
             for (final var it = entry.getValue().iterator(); it.hasNext();) {
                 final String line = it.next();
                 chars += line.length() + 1;
-                if (chars >= Embed.Field.MAX_VALUE) {
+                if (chars >= WebhookUtil.MAX_FIELD_VALUE_LENGTH) {
                     builder.addField(
-                        count == 0 ? entry.getKey() : entry.getKey() + "(cont'd " + count + ')',
-                        value.toString(),
-                        false
+                        new WebhookEmbed.EmbedField(
+                            false,
+                            count == 0 ? entry.getKey() : entry.getKey() + "(cont'd " + count + ')',
+                            value.toString()
+                        )
                     );
                     added = true;
                     count++;
@@ -319,11 +360,13 @@ public class VersionAnnouncer implements AutoCloseable {
                 }
             }
             // flush the buffer
-            if (value.length() > 0) {
+            if (!value.isEmpty()) {
                 builder.addField(
-                    count == 0 ? entry.getKey() : entry.getKey() + "(cont'd " + count + ')',
-                    value.toString(),
-                    false
+                    new WebhookEmbed.EmbedField(
+                        false,
+                        count == 0 ? entry.getKey() : entry.getKey() + "(cont'd " + count + ')',
+                        value.toString()
+                    )
                 );
                 added = true;
             }
@@ -335,20 +378,17 @@ public class VersionAnnouncer implements AutoCloseable {
         return builder.build();
     }
 
-    private CompletableFuture<?> sendWebhook(final Webhook hook) {
-        return this.sendWebhook(hook, null);
+    private CompletableFuture<?> sendWebhook(final WebhookMessage message) {
+        return this.sendWebhook(message, null);
     }
 
-    private CompletableFuture<?> sendWebhook(final Webhook hook, final @Nullable String tag) {
-        final String payload = GsonUtils.GSON.toJson(hook);
-        Logger.debug(payload);
-
+    private CompletableFuture<?> sendWebhook(final WebhookMessage message, final @Nullable String tag) {
         final List<CompletableFuture<?>> responses = new ArrayList<>();
-        for (final var endpoint : this.config.endpoints().entrySet()) {
-            if (!endpoint.getValue().isTagged(tag)) {
+        for (final var endpoint : this.discordSender) {
+            if (!endpoint.isTagged(tag)) {
                 continue;
             }
-            responses.add(this.discordSender.sendJson(endpoint.getValue(), payload));
+            responses.add(endpoint.client().send(message));
         }
         return CompletableFuture.allOf(responses.toArray(new CompletableFuture<?>[0]));
     }
@@ -372,6 +412,10 @@ public class VersionAnnouncer implements AutoCloseable {
                 scheduler.shutdownNow();
             }
         }
+
+        for (final WebhookEndpoint endpoint : this.discordSender) {
+            endpoint.client().close();
+        }
     }
 
     public static HttpRequest get(final URI url) {
@@ -382,7 +426,7 @@ public class VersionAnnouncer implements AutoCloseable {
 
     public static HttpRequest.Builder requestBuilder(final URI uri) {
         return HttpRequest.newBuilder()
-            .setHeader("User-Agent", "mc-version-announcer")
+            .setHeader("User-Agent", USER_AGENT)
             .uri(uri);
     }
 }

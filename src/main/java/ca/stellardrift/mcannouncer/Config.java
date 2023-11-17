@@ -1,6 +1,5 @@
 package ca.stellardrift.mcannouncer;
 
-import ca.stellardrift.mcannouncer.discord.ApiEndpoint;
 import ca.stellardrift.mcannouncer.util.GsonUtils;
 import com.google.gson.JsonSyntaxException;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
@@ -31,18 +30,16 @@ public class Config {
         return config;
     }
 
-    static class Webhook implements ApiEndpoint {
+    static class Webhook {
         private transient @MonotonicNonNull String key;
         private URI webhookUrl;
         private List<String> roleMentions = List.of();
         private Set<String> tags = Set.of();
 
-        @Override
         public @NonNull String description() {
             return this.key;
         }
 
-        @Override
         public @NonNull URI url() { // the webhook URL, from discord API
             return this.webhookUrl;
         }
@@ -51,8 +48,8 @@ public class Config {
             return this.roleMentions;
         }
 
-        boolean isTagged(final @Nullable String tag) {
-            return tag == null || this.tags.contains(tag);
+        public Set<String> tags() {
+            return this.tags;
         }
     }
 

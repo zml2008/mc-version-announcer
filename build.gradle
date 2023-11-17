@@ -17,7 +17,10 @@ dependencies {
     }
     implementation libs.gson
     implementation libs.tinylog.api
+    implementation libs.slf4j
     runtimeOnly libs.tinylog.impl
+    runtimeOnly libs.tinylog.slf4j
+    implementation libs.discordWebhooks
     compileOnlyApi libs.immutables.annotations
     compileOnlyApi libs.immutables.gson
     annotationProcessor libs.immutables.processor
