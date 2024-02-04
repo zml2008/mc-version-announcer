@@ -15,13 +15,13 @@ jobs:
       image-json: "${{ steps.publish.outputs.imageJson }}" # output produced from printJibMeta Gradle task
     steps:
       - name: "checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11" # v4
       - name: "setup environment"
         uses: "./.github/actions/setup-env/"
       - name: "check"
         run: ./gradlew check
       - name: "login"
-        uses: "docker/login-action@v3"
+        uses: "docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d" # v3
         with:
           registry: "ghcr.io"
           username: "${{ github.actor }}"
@@ -35,7 +35,7 @@ jobs:
     environment: "promoted"
     steps:
       - name: "login"
-        uses: "docker/login-action@v3"
+        uses: "docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d" # v3
         with:
           registry: "ghcr.io"
           username: "${{ github.actor }}"

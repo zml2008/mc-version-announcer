@@ -2,7 +2,7 @@
 version = "1.0"
 
 [versions]
-goomph = "3.42.2"
+goomph = "3.44.0"
 immutables = "2.10.0"
 indra = "3.1.3"
 tinylog = "2.6.2"
