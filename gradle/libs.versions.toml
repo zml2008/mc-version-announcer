@@ -10,7 +10,7 @@ jib = "3.4.0"
 
 [libraries]
 discordWebhooks = { module = "club.minnced:discord-webhooks", version = "0.8.4" }
-gson = { module = "com.google.code.gson:gson", version = "2.10.1" }
+gson = { module = "com.google.code.gson:gson", version = "2.11.0" }
 immutables-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
 immutables-gson = { module = "org.immutables:gson", version.ref = "immutables" }
 immutables-processor = { module = "org.immutables:value", version.ref = "immutables" }
