@@ -17,7 +17,7 @@ immutables-processor = { module = "org.immutables:value", version.ref = "immutab
 tinylog-api = { module = "org.tinylog:tinylog-api", version.ref = "tinylog" }
 tinylog-impl = { module = "org.tinylog:tinylog-impl", version.ref = "tinylog" }
 tinylog-slf4j = { module = "org.tinylog:slf4j-tinylog", version.ref = "tinylog" }
-slf4j = { module = "org.slf4j:slf4j-api", version = "2.0.12" }
+slf4j = { module = "org.slf4j:slf4j-api", version = "2.0.13" }
 vanillagradle = { module = "org.spongepowered:vanillagradle", version = "0.2" }
 
 [plugins]
