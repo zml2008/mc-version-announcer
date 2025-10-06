@@ -5,7 +5,7 @@ inputs:
   java-version:
     description: "Java runtime version to build with"
     required: false
-    default: "21"
+    default: "25"
 
 runs:
   using: "composite"
