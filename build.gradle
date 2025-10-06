@@ -26,7 +26,7 @@ dependencies {
     annotationProcessor libs.immutables.processor
 }
 
-def javaTarget = 21
+def javaTarget = 25
 indra {
     github('zml2008', 'mc-version-announcer')
     javaVersions {
