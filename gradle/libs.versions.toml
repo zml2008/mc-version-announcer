@@ -4,7 +4,7 @@ version = "1.0"
 [versions]
 goomph = "4.4.0"
 immutables = "2.11.4"
-indra = "3.2.0"
+indra = "4.0.0"
 tinylog = "2.7.0"
 jib = "3.4.5"
 
