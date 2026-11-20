@@ -4,9 +4,9 @@ version = "1.0"
 [versions]
 goomph = "4.4.1"
 immutables = "2.12.1"
-indra = "4.0.0"
+indra = "4.1.0"
 tinylog = "2.7.0"
-jib = "3.5.3"
+jib = "3.5.4"
 
 [libraries]
 discordWebhooks = { module = "club.minnced:discord-webhooks", version = "0.8.4" }
